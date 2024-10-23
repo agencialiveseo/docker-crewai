@@ -1,4 +1,4 @@
-FROM crewai:latest
+FROM liveseo/crewai
 
 WORKDIR /app
 
