@@ -5,14 +5,14 @@ WORKDIR /app
 RUN apt-get update
 
 RUN apt-get install -y \
-    curl \
-    git \
-    sudo \
-    wget \
-    build-essential \
-    libssl-dev \
-    libffi-dev \
-    python3-dev
+  curl \
+  git \
+  sudo \
+  wget \
+  build-essential \
+  libssl-dev \
+  libffi-dev \
+  python3-dev
 
 RUN rm -rf /var/lib/apt/lists/*
 
@@ -22,17 +22,28 @@ ARG GROUP_ID=1000 # Ajuste para o GID do seu usuário no host
 RUN groupadd -g ${GROUP_ID} coder
 RUN useradd -m -u ${USER_ID} -g coder -s /bin/bash coder
 
-RUN wget https://github.com/coder/code-server/releases/download/v4.18.0/code-server_4.18.0_amd64.deb \
-    && dpkg -i code-server_4.18.0_amd64.deb \
-    && rm code-server_4.18.0_amd64.deb
+RUN echo 'export PATH=$PATH:/home/coder/.local/bin' >> /home/coder/.bashrc
+RUN echo 'coder ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-RUN sudo -u coder code-server --install-extension ms-python.python
-RUN sudo -u coder code-server --install-extension ms-toolsai.jupyter
+RUN wget -qO- https://api.github.com/repos/coder/code-server/releases/latest \
+  | grep "browser_download_url.*code-server_.*_amd64.deb" \
+  | cut -d '"' -f 4 \
+  | wget -qi - \
+  && dpkg -i code-server*.deb \
+  && rm code-server*.deb
 
 RUN chown -R coder:coder /app && chmod -R 755 /app
 
-EXPOSE 8080
-
 USER coder
+
+RUN mkdir /app/.vscode
+COPY .vscode/* /app/.vscode
+
+RUN code-server --install-extension ms-python.python
+RUN code-server --install-extension ms-python.debugpy
+RUN code-server --install-extension ms-toolsai.jupyter
+RUN code-server --install-extension ms-toolsai.jupyter-renderers 
+
+EXPOSE 8080
 
 CMD ["code-server", "--bind-addr", "0.0.0.0:8080", "--auth", "none", "/app"]
